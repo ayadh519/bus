@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>نظام حجز الخط</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <style>
+        :root { --primary: #2563eb; --primary-dark: #1e40af; --success: #10b981; --danger: #ef4444; --warning: #f59e0b; --bg-grad-1: #e0eafc; --bg-grad-2: #cfdef3; --card-bg: rgba(255, 255, 255, 0.95); --text-main: #1e293b; --border-radius: 20px; }
+        body { font-family: 'Tajawal', sans-serif; background: linear-gradient(135deg, var(--bg-grad-1), var(--bg-grad-2)); color: var(--text-main); margin: 0; padding: 10px; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .hidden { display: none !important; }
+        .container { width: 95%; max-width: 450px; background: var(--card-bg); backdrop-filter: blur(10px); padding: 25px 15px; border-radius: var(--border-radius); box-shadow: 0 10px 30px rgba(0,0,0,0.1); box-sizing: border-box; margin-bottom: 20px; transition: all 0.3s ease; }
+        .admin-container { max-width: 95%; padding: 20px 10px; } 
+        .header-logo { font-size: 40px; text-align: center; margin-bottom: 5px; display: block; }
+        h2 { text-align: center; color: var(--primary-dark); margin-top: 0; margin-bottom: 20px; font-weight: 800; font-size: 22px; }
+        .input-group { margin-bottom: 15px; width: 100%; }
+        .input-group label { font-weight: 700; display: block; margin-bottom: 6px; color: #475569; font-size: 14px; }
+        .input-group input, .input-group select { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid #cbd5e1; background: #fff; font-family: 'Tajawal', sans-serif; box-sizing: border-box; font-size: 15px; color: #334155; }
+        .input-group input:focus, .input-group select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+        input::-webkit-calendar-picker-indicator { opacity: 0; cursor: pointer; }
+        button { width: 100%; padding: 14px; border-radius: 12px; font-family: 'Tajawal', sans-serif; font-weight: 700; cursor: pointer; border: none; margin-bottom: 10px; font-size: 16px; transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.15s ease, background 0.2s; }
+        button:active { transform: scale(0.94) translateY(2px); box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important; }
+        @media (prefers-reduced-motion: reduce) { button { transition: none; transform: none !important; } }
+        .btn-submit { background: var(--primary); color: white; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2); }
+        .btn-clear { background: var(--danger); color: white; }
+        .btn-warning { background: var(--warning); color: white; }
+        .btn-back { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+        .btn-home { background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; font-size: 14px; padding: 10px;}
+        .btn-action { width: auto; padding: 6px 12px; font-size: 12px; margin: 2px; border-radius: 8px; font-weight: bold; } 
+        .flex-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; width: 100%; }
+        .stats-box { background: #f0fdfa; border-right: 4px solid #0d9488; padding: 12px 15px; border-radius: 10px; margin-bottom: 15px; font-weight: 700; color: #0f766e; display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box; font-size: 14px; }
+        .badge { background-color: var(--danger); color: white; padding: 2px 6px; border-radius: 10px; font-size: 11px; font-weight: bold; }
+        .notification-item { background: #fef2f2; border-right: 3px solid #ef4444; padding: 10px; margin-bottom: 8px; border-radius: 8px; font-size: 13px; color: #991b1b; }
+        .notification-time { display: block; font-size: 10px; color: #b91c1c; margin-top: 4px; opacity: 0.8;}
+        
+        #gateOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, var(--bg-grad-1), var(--bg-grad-2)); z-index: 9000; display: flex; justify-content: center; align-items: center; padding: 15px; box-sizing: border-box; }
+        .gate-box { background: var(--card-bg); padding: 35px 25px; border-radius: var(--border-radius); width: 100%; max-width: 385px; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.15); backdrop-filter: blur(15px); }
+        .gate-input { text-align: center; font-size: 20px; font-weight: 800; background: #fff; padding: 15px; border-radius: 14px; border: 2px solid var(--primary); margin: 15px 0; width: 100%; box-sizing: border-box; }
+        
+        #loaderOverlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.9); backdrop-filter: blur(5px); z-index:10001; justify-content:center; align-items:center; flex-direction:column; }
+        .modern-loader { display: flex; flex-direction: column; align-items: center; gap: 15px; animation: pulseLoader 1.5s infinite ease-in-out; }
+        .modern-loader .icon { font-size: 50px; }
+        .modern-loader .text { font-size: 16px; font-weight: 800; color: var(--primary); }
+        @keyframes pulseLoader { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.05); opacity: 0.7; } }
+        
+        #toastContainer { position: fixed; top: 15px; left: 50%; transform: translateX(-50%); z-index: 10005; display: flex; flex-direction: column; gap: 8px; width: 90%; max-width: 350px; }
+        .toast { background: white; color: #333; padding: 12px 20px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); font-weight: 700; font-size: 13px; display: flex; align-items: center; gap: 8px; transform: translateY(-50px); opacity: 0; transition: all 0.3s; }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast.success { border-bottom: 3px solid var(--success); }
+        .toast.error { border-bottom: 3px solid var(--danger); }
+        
+        .modal-overlay { display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(6px); z-index: 10000; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-overlay .modal-box { background: var(--card-bg); padding: 25px 20px; border-radius: var(--border-radius); width: 85%; max-width: 380px; max-height: 90vh; overflow-y: auto; text-align: center; transform: scale(0.9) translateY(20px); transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+        .modal-overlay.active .modal-box { transform: scale(1) translateY(0); }
+        
+        .tabs-header { display: flex; gap: 5px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; width: 100%; scrollbar-width: none; }
+        .tabs-header::-webkit-scrollbar { display: none; }
+        .tab-btn { flex: 1; min-width: max-content; padding: 10px 15px; background: #f1f5f9; color: #64748b; border-radius: 10px; font-weight: 700; border: none; font-size: 13px; transition: 0.2s; white-space: nowrap; margin-bottom:0;}
+        .tab-btn.active { background: var(--primary); color: white; }
+        .tab-content { display: none; background: transparent; padding: 0; border: none; width: 100%; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .form-card { background: #fff; padding: 15px; border-radius: 16px; border: 1px solid #e2e8f0; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .table-responsive { width: 100%; border-radius: 12px; background: transparent; }
+        table { width: 100%; border-collapse: collapse; }
+        .status-badge { padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; }
+        
+        .poll-container { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        .poll-header { background: #f8fafc; padding: 12px 15px; font-weight: 800; color: var(--primary-dark); display: flex; justify-content: space-between; border-bottom: 1px solid #e2e8f0; font-size: 15px; }
+        .poll-body { padding: 10px 15px; }
+        .poll-option { display: flex; justify-content: space-between; align-items: center; background: #f1f5f9; padding: 14px 15px; margin-bottom: 8px; border-radius: 10px; border: 2px solid transparent; cursor: pointer; transition: 0.2s; font-weight: 700; color: #475569; }
+        .poll-option:last-child { margin-bottom: 0; }
+        .poll-option.selected { border-color: var(--primary); background: #eff6ff; color: var(--primary-dark); }
+        .poll-option.selected::after { content: '✔️'; font-size: 16px; }
+        .poll-option.leave-option { border-color: transparent; color: #991b1b; }
+        .poll-option.leave-option.selected { border-color: var(--danger); background: #fef2f2; color: var(--danger); }
+        .poll-option.locked { opacity: 0.6; cursor: not-allowed; border-color: transparent; }
+        .poll-option.locked::after { content: '🔒'; font-size: 14px; opacity:0.7; }
+        .poll-note-input { width: 100%; padding: 10px; border-radius: 8px; border: 1px dashed #cbd5e1; margin-top: 10px; font-family: 'Tajawal'; font-size: 13px; display: none; box-sizing: border-box; background: #f8fafc;}
+        .poll-note-input.show { display: block; }
+        .add-note-btn { background: none; border: none; color: var(--primary); font-size: 12px; font-weight: bold; padding: 0; margin-top: 10px; text-decoration: underline; width: auto; box-shadow: none; display: block;}
+
+        .history-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; margin-bottom: 10px; text-align: right; box-shadow: 0 1px 3px rgba(0,0,0,0.02); display:flex; justify-content: space-between; align-items: center;}
+        .history-card.unpaid { border-right: 4px solid var(--danger); }
+        .history-card.paid { border-right: 4px solid var(--success); }
+        .history-card.leave { border-right: 4px solid var(--warning); background: #fffbeb;}
+        
+        .driver-day-title { color: var(--primary-dark); font-size: 16px; font-weight: 800; margin: 20px 0 10px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px; text-align: right;}
+        .d-shift-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 12px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .d-shift-card.empty { opacity: 0.6; }
+        .d-shift-header { background: #f8fafc; padding: 15px; font-weight: 700; color: #334155; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: 0.2s; }
+        .d-shift-card.active .d-shift-header { background: #eff6ff; color: var(--primary-dark); border-bottom: 1px solid #bfdbfe; }
+        .d-shift-content { display: none; padding: 10px; background: #fff; }
+        .d-shift-content.open { display: block; animation: fadeIn 0.3s ease; }
+        .d-pax-item { border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 8px; overflow: hidden; }
+        .d-pax-item:last-child { margin-bottom: 0; }
+        .d-pax-header { padding: 12px; background: #f8fafc; display: flex; justify-content: space-between; font-weight: bold; font-size: 14px; cursor: pointer; align-items: center;}
+        .d-pax-details { display: none; padding: 12px; background: #fff; font-size: 13px; border-top: 1px dashed #cbd5e1; text-align: right;}
+        .d-pax-details.open { display: block; }
+        .driver-alert-box { background: #fef2f2; border: 1px solid #fecaca; border-right: 4px solid #ef4444; padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; color: #991b1b; display: none; text-align: right;}
+
+        .profile-header { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); padding: 20px; border-radius: 16px; color: white; margin-bottom: 15px; text-align: center; }
+        .profile-name { font-size: 22px; font-weight: 800; margin: 0 0 5px 0; }
+        .profile-job { font-size: 14px; opacity: 0.8; margin: 0; }
+        .profile-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .p-stat-box { background: #f8fafc; padding: 12px; border-radius: 12px; border: 1px solid #e2e8f0; text-align: center; }
+        .p-stat-title { font-size: 11px; color: #64748b; font-weight: bold; display: block; margin-bottom: 5px; }
+        .p-stat-value { font-size: 18px; font-weight: 800; color: var(--primary-dark); }
+        .p-history-list { max-height: 250px; overflow-y: auto; text-align: right; padding-right: 5px;}
+
+        .shift-setting-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; margin-bottom: 10px; text-align: right; }
+        .shift-setting-card label { display: inline-block; font-weight: bold; margin-right: 5px; color: var(--primary-dark);}
+        .shift-time-inputs { display: flex; gap: 10px; margin-top: 10px; }
+        .shift-time-inputs input { padding: 8px; font-size: 13px; }
+
+        @media (max-width: 767px) {
+            table thead { display: none; }
+            table tbody tr { display: block; background: #fff; margin-bottom: 10px; border-radius: 12px; border: 1px solid #e2e8f0; padding: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+            table tbody td { display: flex; justify-content: space-between; align-items: center; padding: 8px 5px; border-bottom: 1px solid #f1f5f9; font-size: 13px; text-align: left; }
+            table tbody td:last-child { border-bottom: none; }
+            table tbody td::before { content: attr(data-label); font-weight: 700; color: #64748b; margin-left: 10px; }
+            .action-buttons { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
+            .admin-container { padding: 15px 5px; }
+            .mobile-row { flex-direction: row; gap: 10px; margin-bottom: 0;}
+            .mobile-row .input-group { margin-bottom: 15px; }
+        }
+        @media (min-width: 768px) {
+            body { padding: 40px 20px; }
+            .container { max-width: 500px; padding: 40px; }
+            .admin-container { max-width: 1100px; padding: 40px; }
+            .grid-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+            .grid-layout .input-group { margin-bottom: 0; }
+            .full-width { grid-column: span 2; }
+            .tabs-header { justify-content: center; }
+            .tab-btn { flex: 0 1 auto; padding: 12px 30px; font-size: 15px; margin: 0 5px; }
+            .table-responsive { background: #fff; border: 1px solid #e2e8f0; overflow-x: auto; padding: 0; }
+            table th, table td { display: table-cell; padding: 12px 15px; text-align: center; border-bottom: 1px solid #f1f5f9; }
+            table th { background-color: #f8fafc; color: #475569; font-weight: 700; border-bottom: 2px solid #e2e8f0; }
+            table tbody tr { display: table-row; background: transparent; margin: 0; border: none; box-shadow: none; padding: 0;}
+            table tbody td::before { display: none; }
+            .admin-form-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; align-items: start; }
+            .admin-form-grid .input-group { margin-bottom: 0; }
+            .admin-form-btn { grid-column: span 3; margin-top: 10px; }
+            .desktop-nowrap { flex-wrap: nowrap; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="toastContainer"></div>
+
+    <div id="confirmModalOverlay" class="modal-overlay">
+        <div class="modal-box">
+            <div id="confirmModalIcon" style="font-size: 45px; margin-bottom: 10px;">⚠️</div>
+            <h3 id="confirmModalTitle" style="color: var(--primary-dark); margin-top: 0; margin-bottom: 10px; font-size: 20px;">تأكيد</h3>
+            <p id="confirmModalMessage" style="color: #475569; font-size: 14px; margin-bottom: 20px; line-height: 1.6; white-space: pre-line;"></p>
+            <div class="flex-row"><button id="confirmModalYesBtn" class="btn-submit" style="flex:1; margin-bottom:0;">موافق</button><button id="confirmModalNoBtn" class="btn-back" style="flex:1; margin-bottom:0; background: #e2e8f0;">إلغاء</button></div>
+            <button id="confirmModalAbortBtn" style="background:transparent; color:#ef4444; margin-top:10px; margin-bottom:0; font-size:14px; box-shadow:none; padding:5px;">إلغاء العملية ❌</button>
+        </div>
+    </div>
+
+    <div id="promptModalOverlay" class="modal-overlay">
+        <div class="modal-box">
+            <div style="font-size: 40px; margin-bottom: 10px;">✏️</div>
+            <h3 id="promptModalTitle" style="color: var(--primary-dark); margin-top: 0; margin-bottom: 10px; font-size: 18px;">تعديل بيانات</h3>
+            <p id="promptModalLabel" style="color: #475569; font-size: 13px; margin-bottom: 15px;"></p>
+            <div class="input-group"><input type="text" id="promptModalInput" style="text-align: center; font-weight: bold; font-size: 18px;"></div>
+            <div class="flex-row"><button id="promptModalYesBtn" class="btn-submit" style="flex:1; margin-bottom:0;">حفظ</button><button id="promptModalNoBtn" class="btn-back" style="flex:1; margin-bottom:0;">إلغاء</button></div>
+        </div>
+    </div>
+
+    <div id="contactModalOverlay" class="modal-overlay">
+        <div class="modal-box">
+            <div style="font-size: 40px; margin-bottom: 5px;">📱</div>
+            <h3 style="color: var(--primary-dark); margin-top: 0; margin-bottom: 10px; font-size: 18px;">طريقة الاتصال</h3>
+            <p style="color: #64748b; font-size: 13px; margin-bottom: 15px;">اختر طريقة التواصل مع الراكب <strong id="contactModalName"></strong></p>
+            <button class="btn-submit" id="callPhoneBtn" style="background:var(--primary);"><span style="font-size:18px;">📞</span> اتصال هاتفي مباشر</button>
+            <button class="btn-submit" id="callWaBtn" style="background:#25d366; box-shadow:0 4px 10px rgba(37,211,102,0.2);"><span style="font-size:18px;">💬</span> مراسلة عبر WhatsApp</button>
+            <button class="btn-back" onclick="document.getElementById('contactModalOverlay').classList.remove('active')" style="margin-bottom:0; margin-top:5px;">إلغاء</button>
+        </div>
+    </div>
+
+    <div id="employeeProfileModalOverlay" class="modal-overlay">
+        <div class="modal-box" style="padding:15px;">
+            <div class="profile-header">
+                <h3 class="profile-name" id="epName">اسم الموظف</h3>
+                <p class="profile-job" id="epPhoneTitle">07800000000 | قسم المهندسين</p>
+            </div>
+            
+            <div class="profile-stats-grid">
+                <div class="p-stat-box"><span class="p-stat-title">إجمالي الرحلات</span><span class="p-stat-value" id="epTotalTrips">0</span></div>
+                <div class="p-stat-box"><span class="p-stat-title">رحلات غير مسددة</span><span class="p-stat-value" style="color:var(--danger);" id="epUnpaidTrips">0</span></div>
+                <div class="p-stat-box full-width"><span class="p-stat-title">المبلغ المستحق للدفع</span><span class="p-stat-value" style="color:var(--success); font-size:22px;" id="epDueAmount">0 د.ع</span></div>
+            </div>
+
+            <div class="form-card" style="padding:10px; margin-bottom:15px; border:none; background:#f8fafc; text-align:right;">
+                <div style="font-size:13px; margin-bottom:5px;">📅 <strong>يوم دورة الأجور:</strong> <span id="epCycleDay">1</span> من الشهر</div>
+                <div style="font-size:13px;">💵 <strong>أجرة الرحلة:</strong> <span id="epFare">0</span> د.ع</div>
+            </div>
+
+            <h4 style="margin:0 0 10px 0; color:var(--primary-dark); font-size:15px; text-align:right;">سجل الرحلات السابقة</h4>
+            <div class="p-history-list" id="epHistoryList"></div>
+            
+            <button class="btn-back" style="margin-top:15px; margin-bottom:0; width:100%;" onclick="document.getElementById('employeeProfileModalOverlay').classList.remove('active')">إغلاق الملف</button>
+        </div>
+    </div>
+
+    <div id="forgotPwdOptionsModalOverlay" class="modal-overlay">
+        <div class="modal-box">
+            <div style="font-size: 40px; margin-bottom: 5px;">🔑</div>
+            <h3 style="color: var(--primary-dark); margin-top: 0; margin-bottom: 10px; font-size: 18px;">نسيت الرمز السري؟</h3>
+            <p style="color: #64748b; font-size: 13px; margin-bottom: 15px;">الرجاء تحديد نوع حسابك لاستعادة الرمز:</p>
+            <button class="btn-submit" onclick="recoverEmployeePwd()" style="background:#25d366; box-shadow:0 4px 10px rgba(37,211,102,0.2);">أنا موظف (مراسلة واتساب) 💬</button>
+            <button class="btn-submit" onclick="openAdminResetModal()" style="margin-top:10px;">أنا مدير أو سائق (رقم الاسترجاع) 📱</button>
+            <button class="btn-back" onclick="closeForgotPwdOptionsModal()" style="margin-bottom:0; margin-top:10px;">إلغاء</button>
+        </div>
+    </div>
+
+    <div id="adminResetModalOverlay" class="modal-overlay">
+        <div class="modal-box">
+            <div style="font-size: 40px; margin-bottom: 5px;">📱</div>
+            <h3 style="color: var(--primary-dark); margin-top: 0; margin-bottom: 10px; font-size: 18px;">استعادة رمز الإدارة</h3>
+            <p style="color: #64748b; font-size: 13px; margin-bottom: 15px; line-height: 1.5;">أدخل رقم هاتف الاسترجاع المسجل للإدارة لتعيين رمز جديد:</p>
+            <div class="input-group"><label>رقم الهاتف المسجل:</label><input type="text" id="resetPhoneInput" placeholder="07800000000" style="text-align:center; direction:ltr;" inputmode="tel"></div>
+            <div class="input-group"><label>الرمز السري الجديد:</label><input type="password" id="resetNewPINInput" placeholder="•••" style="text-align:center; font-size:20px; letter-spacing:5px;" pattern="[0-9]*" inputmode="numeric"></div>
+            <button class="btn-submit" onclick="confirmAdminReset()">تأكيد وتغيير الرمز ✅</button>
+            <button class="btn-back" onclick="closeAdminResetModal()" style="margin-bottom:0;">إلغاء</button>
+        </div>
+    </div>
+
+    <div id="adminGeneratedPinModal" class="modal-overlay">
+        <div class="modal-box">
+            <div style="font-size: 45px; margin-bottom: 10px;">🎉</div>
+            <h3 style="color: var(--success); margin-top: 0; margin-bottom: 10px; font-size: 20px;">تمت الإضافة بنجاح</h3>
+            <p style="color: #475569; font-size: 14px; margin-bottom: 15px;">تم توليد رمز سري خاص بالموظف الجديد. يرجى تزويده بهذا الرمز لكي يستطيع الدخول:</p>
+            <div id="generatedPinDisplay" style="background:#f1f5f9; padding:15px; font-size:35px; font-weight:800; letter-spacing:10px; color:var(--primary-dark); border-radius:12px; margin-bottom:20px; border:2px dashed #cbd5e1;"></div>
+            <button class="btn-submit" onclick="document.getElementById('adminGeneratedPinModal').classList.remove('active');">حسناً، تم الحفظ ✅</button>
+        </div>
+    </div>
+
+    <div id="gateOverlay">
+        <div class="gate-box" id="gateSelectionBox">
+            <span class="header-logo" id="gateSiteIcon">🚐</span>
+            <h3 id="gateSiteTitle" style="color: var(--primary-dark); margin: 5px 0 0 0; font-size: 20px;">حجز رحلة الموظفين</h3>
+            <p style="color: #64748b; font-size: 13px; margin-top: 8px;">الرجاء اختيار نوع الحساب للدخول</p>
+            <button type="button" class="btn-submit" onclick="showEmpLogin()" style="margin-top: 20px;">تسجيل الموظفين 👤</button>
+            <button type="button" class="btn-back" onclick="showStaffLogin()">تسجيل الإدارة والسائقين ⚙️</button>
+        </div>
+
+        <div class="gate-box hidden" id="empLoginBox">
+            <h3 style="color: var(--primary-dark); margin-top: 0; margin-bottom: 15px; font-size: 18px;">دخول الموظفين</h3>
+            <div class="input-group">
+                <input type="text" id="empNameInput" list="empNamesList" placeholder="ابحث أو اختر اسمك..." class="gate-input" style="font-size:16px; letter-spacing:0; padding:12px;">
+                <datalist id="empNamesList"></datalist>
+            </div>
+            <div class="input-group">
+                <input type="password" id="empPinInput" placeholder="الرمز (4 أرقام)" pattern="[0-9]*" inputmode="numeric" class="gate-input" style="margin-top:0;" onkeypress="if(event.key==='Enter' || event.keyCode===13) executeEmpLogin()">
+            </div>
+            <button type="button" class="btn-submit" onclick="executeEmpLogin()">دخول 🚀</button>
+            <button type="button" class="btn-back" onclick="backToGateSelection()">رجوع</button>
+            <div style="margin-top: 10px; padding-top: 10px;">
+                <a href="javascript:void(0)" onclick="openForgotPwdOptionsModal()" style="color: #64748b; font-size: 12px; font-weight: bold; text-decoration: none;">نسيت الرمز السري؟ 🔑</a>
+            </div>
+        </div>
+
+        <div class="gate-box hidden" id="staffLoginBox">
+            <h3 style="color: var(--text-main); margin-top: 0; margin-bottom: 15px; font-size: 18px;">دخول الإدارة والسائق</h3>
+            <input type="password" id="staffPinInput" placeholder="الرمز السري" pattern="[0-9]*" inputmode="numeric" class="gate-input" onkeypress="if(event.key==='Enter' || event.keyCode===13) executeStaffLogin()">
+            <button type="button" class="btn-submit" onclick="executeStaffLogin()">دخول 🚀</button>
+            <button type="button" class="btn-back" onclick="backToGateSelection()">رجوع</button>
+            <div style="margin-top: 10px; padding-top: 10px;">
+                <a href="javascript:void(0)" onclick="openForgotPwdOptionsModal()" style="color: #64748b; font-size: 12px; font-weight: bold; text-decoration: none;">نسيت الرمز السري؟ 🔑</a>
+            </div>
+        </div>
+    </div>
+
+    <div id="loaderOverlay"><div class="modern-loader"><div class="icon" id="loaderIcon">🚐</div><div class="text">جاري المعالجة...</div></div></div>
+
+    <div class="container hidden" id="attendanceSection" style="padding-top:15px; padding-bottom:15px;">
+        <div class="flex-row" style="justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <span class="header-logo" id="mainSiteIcon" style="font-size:30px; margin:0;">🚐</span>
+            <button class="btn-action btn-home" style="margin: 0; background:#f1f5f9; color:#475569; border:none;" onclick="logoutToGate()">خروج ↩</button>
+        </div>
+        
+        <div id="welcomeUserBox" style="background: #e0f2fe; color: #0369a1; padding: 12px 15px; border-radius: 12px; font-weight: 700; margin-bottom: 15px; text-align: right;">أهلاً بك، <span id="userNameSpan" style="font-size: 17px; color: #0c4a6e;"></span> 👋</div>
+        
+        <div class="flex-row" style="margin-bottom: 15px;">
+            <button class="btn-submit" id="btnShowPolls" style="flex:1; margin:0;" onclick="toggleEmpView('polls')">التصويت 📝</button>
+            <button class="btn-back" id="btnShowHistory" style="flex:1; margin:0;" onclick="toggleEmpView('history')">الرحلات السابقة 📁</button>
+        </div>
+
+        <div id="empPollsView">
+            <div class="stats-box" style="margin-bottom: 20px; flex-direction:column; align-items:flex-start;">
+                <span style="margin-bottom:5px;">رحلاتك غير المسددة للإدارة:</span>
+                <strong id="empTripCountDisplay" style="font-size:18px; color:var(--danger);">0 رحلة</strong>
+            </div>
+            <h4 style="margin:0 0 10px 0; color:var(--primary-dark); font-size:16px;">حجز الرحلات:</h4>
+            <div id="pollsContainer"></div>
+        </div>
+
+        <div id="empHistoryView" class="hidden">
+            <h4 style="margin:0 0 10px 0; color:var(--primary-dark); font-size:16px;">سجل رحلاتك:</h4>
+            <div id="empHistoryListContainer" style="max-height: 60vh; overflow-y: auto;"></div>
+        </div>
+    </div>
+
+    <div class="container admin-container hidden" id="driverSection" style="max-width: 500px; margin:0 auto;">
+        <div class="flex-row mobile-row" style="justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h2 style="margin: 0; font-size: 18px;">لوحة السائق 🚐 <span id="driverNameDisplay" style="font-size:14px; color:#64748b;"></span></h2>
+            <button class="btn-action btn-home" style="margin: 0; background:#f1f5f9; color:#475569; border:none;" onclick="logoutToGate()">خروج ↩</button>
+        </div>
+        <div id="driverAlertBox" class="driver-alert-box"><strong>🔔 تنبيه:</strong> <span id="driverAlertText"></span></div>
+        <button class="btn-submit" style="margin-bottom:20px;" onclick="refreshAdminData()">🔄 تحديث الرحلات</button>
+        <div id="driverSmartShiftsContainer"></div>
+    </div>
+
+    <div class="container admin-container hidden" id="adminSection">
+        <div class="flex-row mobile-row" style="justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h2 style="margin: 0; font-size: 18px;">لوحة التحكم ⚙️</h2>
+            <button class="btn-action btn-home" style="margin: 0; background:#f1f5f9; color:#475569; border:none;" onclick="logoutToGate()">خروج ↩</button>
+        </div>
+        <div class="tabs-header">
+            <button class="tab-btn active" onclick="switchTab('tab-tomorrow', this)">🚀 الأرشيف والإشعارات</button>
+            <button class="tab-btn" onclick="switchTab('tab-users', this)">👥 الموظفين</button>
+            <button class="tab-btn" onclick="switchTab('tab-drivers', this)">👨‍✈️ السائقين</button>
+            <button class="tab-btn" onclick="switchTab('tab-finance', this)">💰 الأجور</button>
+            <button class="tab-btn" onclick="switchTab('tab-settings', this)">⚙️ إعدادات</button>
+        </div>
+
+        <div id="tab-tomorrow" class="tab-content active">
+            <button class="btn-submit" style="margin-bottom:15px;" onclick="refreshAdminData()">🔄 تحديث البيانات</button>
+            
+            <div class="form-card" style="background:#fef2f2; border-color:#fecaca; margin-bottom: 20px;">
+                <h4 style="margin:0 0 10px 0; color:var(--danger); font-size:14px;">🌴 الموظفين المجازين لهذا اليوم:</h4>
+                <div id="adminOffDutyList" style="font-size:13px; color:#991b1b; padding-right:10px; line-height:1.6;"></div>
+            </div>
+            
+            <div class="form-card" style="background:#f8fafc;">
+                <h4 style="margin:0 0 10px 0; color:#475569;">📁 الرحلات السابقة (المكتملة)</h4>
+                <div class="input-group" style="margin-bottom:15px;"><label>فرز حسب السائق:</label><select id="pastTripsDriverFilter" onchange="loadAttendanceDataAdmin()"><option value="الكل">الكل (جميع السائقين)</option></select></div>
+                <div id="pastTripsContainer"></div>
+            </div>
+            
+            <div class="form-card" style="background:#fff7ed; border-color:#fed7aa; margin-top: 20px;">
+                <h4 style="margin:0 0 10px 0; color:#c2410c; font-size: 14px;">🔔 الإشعارات الدورية وتنبيهات الأجور</h4>
+                <div id="notificationsList" style="max-height: 150px; overflow-y: auto;"></div>
+                <button class="btn-action btn-clear" style="margin-top:10px; width:100%;" onclick="clearNotifications()">مسح الإشعارات</button>
+            </div>
+        </div>
+
+        <div id="tab-users" class="tab-content">
+            <div class="form-card">
+                <label style="margin-bottom:10px; color:var(--primary-dark); font-size: 14px;">➕ موظف جديد:</label>
+                <p style="font-size:11px; color:#64748b; margin-top:0;">(سيتم توليد الرمز السري المكون من 4 أرقام تلقائياً)</p>
+                <div class="admin-form-grid">
+                    <div class="input-group"><input type="text" id="newName" placeholder="الاسم الكامل"></div>
+                    <div class="input-group"><input type="number" id="newFare" placeholder="الأجرة (5000)"></div>
+                    <div class="input-group"><input type="number" id="newCycleDay" placeholder="يوم بداية الشهر (1-31)" min="1" max="31"></div>
+                    <div class="input-group"><input type="text" id="newPhone" placeholder="رقم الهاتف"></div>
+                    <div class="input-group"><input type="text" id="newAddress" placeholder="العنوان"></div>
+                    <div class="input-group"><input type="number" id="newOrder" placeholder="تسلسل ركوب (1)"></div>
+                    <button class="btn-add admin-form-btn" onclick="addEmployee()">حفظ وتوليد رمز 🔑</button>
+                </div>
+            </div>
+            <p style="font-size:12px; color:#64748b;">* اضغط على اسم الموظف في الجدول لعرض ملفه الشخصي كاملاً.</p>
+            <div class="table-responsive"><table id="employeesTable"><thead><tr><th>#</th><th>الاسم (الملف)</th><th>الرمز</th><th>الأجرة</th><th>دورة</th><th>هاتف</th><th>عنوان</th><th>تعديل</th></tr></thead><tbody></tbody></table></div>
+        </div>
+
+        <div id="tab-drivers" class="tab-content">
+            <div class="form-card">
+                <label style="margin-bottom:10px; color:var(--primary-dark); font-size: 14px;">➕ إضافة سائق جديد:</label>
+                <div class="grid-layout">
+                    <div class="input-group"><input type="text" id="newDriverName" placeholder="اسم السائق"></div>
+                    <div class="input-group"><input type="text" id="newDriverPin" placeholder="الرمز السري للسائق"></div>
+                </div>
+                <button class="btn-add" onclick="addDriver()" style="margin-top:10px;">إضافة السائق</button>
+            </div>
+            <div class="table-responsive"><table id="driversTable"><thead><tr><th>اسم السائق</th><th>الرمز</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody></tbody></table></div>
+        </div>
+
+        <div id="tab-finance" class="tab-content">
+            <div class="form-card">
+                <h4 style="margin:0 0 10px 0; color:var(--primary-dark);">متابعة الأجور وتسديد الحساب</h4>
+                <p style="font-size:13px; color:#64748b; margin-top:0;">يعرض هذا الجدول الرحلات المتراكمة (غير المسددة) فقط. (الغيابات / مجاز لا تحسب ضمن الأجور).</p>
+            </div>
+            <div class="table-responsive"><table id="monthlyReportTable"><thead><tr><th>الاسم</th><th>الفترة غير المسددة</th><th>الرحلات</th><th>المبلغ المطلوب</th><th>إجراء</th></tr></thead><tbody></tbody></table></div>
+            
+            <div class="flex-row" style="margin-top: 15px;">
+                <button class="btn-submit" style="flex:1; background:#10b981; margin:0;" onclick="downloadExcelReport()">📥 تحميل Excel</button>
+            </div>
+        </div>
+
+        <div id="tab-settings" class="tab-content">
+            <div class="form-card" style="background:#e0f2fe; border-color:#bae6fd;">
+                <label style="color:var(--primary-dark); font-size:14px; margin-bottom: 10px;">🎨 شكل الموقع:</label>
+                <div class="grid-layout">
+                    <div class="input-group"><label>اسم الخط:</label><input type="text" id="siteTitleInput" placeholder="خط المهندس أحمد"></div>
+                    <div class="input-group"><label>أيقونة:</label><input type="text" id="siteIconInput" placeholder="🚐"></div>
+                </div>
+            </div>
+            
+            <div class="form-card">
+                <h4 style="color:var(--primary-dark); margin:0 0 10px 0;">أوقات التصويت للموظفين</h4>
+                <div class="input-group">
+                    <label>حالة النظام العامة:</label>
+                    <select id="sysStatus" onchange="toggleTimeSettings()"><option value="open">مفتوح 24 ساعة للكل</option><option value="closed">مغلق مؤقتاً للكل</option><option value="timed">أوقات محددة (متقدم)</option></select>
+                </div>
+                <div id="timeSettings" style="display: none; border-top: 1px dashed #cbd5e1; padding-top: 15px; margin-top: 10px;">
+                    <div class="shift-setting-card">
+                        <label><input type="checkbox" id="sh_m_en" checked> ☀️ الشفت الصباحي</label>
+                        <div class="shift-time-inputs">
+                            <div><label style="font-size:11px;">يفتح:</label><input type="time" id="sh_m_start" value="00:00"></div>
+                            <div><label style="font-size:11px;">يغلق:</label><input type="time" id="sh_m_end" value="23:59"></div>
+                        </div>
+                    </div>
+                    <div class="shift-setting-card">
+                        <label><input type="checkbox" id="sh_e_en" checked> 🌤️ الشفت المسائي</label>
+                        <div class="shift-time-inputs">
+                            <div><label style="font-size:11px;">يفتح:</label><input type="time" id="sh_e_start" value="00:00"></div>
+                            <div><label style="font-size:11px;">يغلق:</label><input type="time" id="sh_e_end" value="23:59"></div>
+                        </div>
+                    </div>
+                    <div class="shift-setting-card">
+                        <label><input type="checkbox" id="sh_n_en" checked> 🌙 الشفت الليلي</label>
+                        <div class="shift-time-inputs">
+                            <div><label style="font-size:11px;">يفتح:</label><input type="time" id="sh_n_start" value="00:00"></div>
+                            <div><label style="font-size:11px;">يغلق:</label><input type="time" id="sh_n_end" value="23:59"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-card">
+                <label style="color:var(--danger); font-size:14px; margin-bottom: 10px;">كلمات المرور والاسترجاع:</label>
+                <div class="grid-layout">
+                    <div class="input-group"><label>رمز المدير الأساسي:</label><input type="text" id="adminPassInput" placeholder="999"></div>
+                    <div class="input-group"><label>موبايل استرجاع الإدارة:</label><input type="text" id="adminRecoveryPhoneInput" placeholder="07800000000" style="direction:ltr; text-align:left;" inputmode="tel"></div>
+                    <div class="input-group full-width"><label>رقم واتساب الإدارة لمساعدة الركاب (الرمز الدولي 964):</label><input type="text" id="whatsappNumberInput" placeholder="9647800000000" style="direction:ltr; text-align:left;" inputmode="tel"></div>
+                </div>
+                <button class="btn-submit" style="margin-top: 10px;" onclick="saveSystemSettings()">حفظ إعدادات النظام</button>
+            </div>
+            <div class="form-card" style="background:#fef2f2; border-color:#fca5a5; margin-top: 20px; text-align: center;">
+                <button class="btn-clear" onclick="clearData()">تصفير جميع السجلات ⚠️</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_ENDPOINT = "https://script.google.com/macros/s/AKfycbz4tG4rD6BNWRroSiv3nbViPhVc7KdD-97qUTfJ9aNmHNcwFc6DJWfFao5vSpaJ5Dbv5Q/exec";
+
+        let sessionPass = ""; let currentEmployeeName = ""; let currentEmployeePin = ""; let currentDriverName = ""; let adminWhatsapp = "";
+        const pollOptionsList = ["صباحي داخل", "صباحي خارج", "مسائي داخل", "مسائي خارج", "ليلي داخل", "ليلي خارج", "مجاز (عطلة)"];
+
+        function safeSetText(id, text) { let el = document.getElementById(id); if(el) el.innerText = text; }
+        function showToast(msg, type = 'success') { 
+            try {
+                const container = document.getElementById('toastContainer'); 
+                const toast = document.createElement('div'); 
+                toast.className = 'toast ' + type; 
+                toast.innerHTML = (type === 'success' ? '✅ ' : '❌ ') + msg; 
+                container.appendChild(toast); 
+                setTimeout(function(){ toast.classList.add('show'); }, 10); 
+                setTimeout(function(){ toast.classList.remove('show'); setTimeout(function(){ toast.remove(); }, 400); }, 3000); 
+            } catch(e) {} 
+        }
+        
+        function showCustomConfirm(title, message, yesText = 'موافق', noText = 'إلغاء', icon = '⚠️', allowAbort = false) { 
+            return new Promise((resolve) => { 
+                const overlay = document.getElementById('confirmModalOverlay'); 
+                safeSetText('confirmModalTitle', title); safeSetText('confirmModalMessage', message); safeSetText('confirmModalYesBtn', yesText); safeSetText('confirmModalNoBtn', noText); safeSetText('confirmModalIcon', icon); 
+                const abortBtn = document.getElementById('confirmModalAbortBtn'); 
+                if (allowAbort) { abortBtn.style.display = 'block'; abortBtn.onclick = () => { overlay.classList.remove('active'); resolve(null); }; } else { abortBtn.style.display = 'none'; } 
+                overlay.classList.add('active'); 
+                document.getElementById('confirmModalYesBtn').onclick = () => { overlay.classList.remove('active'); resolve(true); }; 
+                document.getElementById('confirmModalNoBtn').onclick = () => { overlay.classList.remove('active'); resolve(false); }; 
+            }); 
+        }
+        
+        function showCustomPrompt(title, label, defaultValue, type='text') { 
+            return new Promise((resolve) => { 
+                const overlay = document.getElementById('promptModalOverlay'); 
+                safeSetText('promptModalTitle', title); safeSetText('promptModalLabel', label); 
+                const input = document.getElementById('promptModalInput'); input.type = type; input.value = defaultValue; 
+                overlay.classList.add('active'); setTimeout(() => input.focus(), 300); 
+                document.getElementById('promptModalYesBtn').onclick = () => { overlay.classList.remove('active'); resolve(input.value); }; 
+                document.getElementById('promptModalNoBtn').onclick = () => { overlay.classList.remove('active'); resolve(null); }; 
+            }); 
+        }
+        
+        function togglePastTrip(id) { 
+            let el = document.getElementById(id); 
+            if (!el) return;
+            if (el.classList.contains('open')) { el.classList.remove('open'); } else { el.classList.add('open'); } 
+        }
+
+        async function runServer(action, ...args) {
+            let payload = { action: action };
+            if (action === "getInitialConfig") {}
+            else if (action === "loginSystem") { payload.type = args[0]; payload.username = args[1]; payload.pin = args[2]; }
+            else if (action === "registerShift") { payload.name = args[0]; payload.pin = args[1]; payload.shift = args[2]; payload.date = args[3]; payload.time = args[4]; payload.note = args[5]; }
+            else if (action === "completeTrip") { payload.pin = args[0]; payload.date = args[1]; payload.shift = args[2]; payload.driverName = args[3]; }
+            else if (action === "deleteTripRecord") { payload.pin = args[0]; payload.name = args[1]; payload.date = args[2]; payload.shift = args[3]; }
+            else if (action === "payEmployeeBalance") { payload.pin = args[0]; payload.name = args[1]; }
+            else if (action === "addEmployeeAutoPin") { payload.pin = args[0]; payload.empData = args[1]; }
+            else if (action === "adminSync") { payload.pin = args[0]; payload.appData = args[1]; }
+            else if (action === "verifyPhoneAndResetAdminPIN") { payload.phone = args[0]; payload.newPin = args[1]; }
+
+            let response = await fetch(API_ENDPOINT, {
+                method: "POST",
+                body: JSON.stringify(payload)
+            });
+            return await response.json();
+        }
+        
+        function showLoader() { document.getElementById('loaderOverlay').style.display = 'flex'; }
+        function hideLoader() { document.getElementById('loaderOverlay').style.display = 'none'; }
+        function switchTab(tabId, btn) { document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active')); btn.classList.add('active'); document.getElementById(tabId).classList.add('active'); }
+
+        function formatDate(dateObj) { return String(dateObj.getDate()).padStart(2, '0') + '/' + String(dateObj.getMonth() + 1).padStart(2, '0') + '/' + dateObj.getFullYear(); }
+        function getDayName(dateObj) { const days = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"]; return days[dateObj.getDay()]; }
+        function parseDate(dateStr) { let p = dateStr.split('/'); return new Date(p[2], p[1]-1, p[0]); }
+        function getAutoShift() { let h = new Date().getHours(); if (h >= 4 && h < 12) return 'صباحي داخل'; if (h >= 12 && h < 18) return 'مسائي داخل'; return 'ليلي داخل'; }
+
+        function showEmpLogin() { document.getElementById('gateSelectionBox').classList.add('hidden'); document.getElementById('empLoginBox').classList.remove('hidden'); }
+        function showStaffLogin() { document.getElementById('gateSelectionBox').classList.add('hidden'); document.getElementById('staffLoginBox').classList.remove('hidden'); }
+        function backToGateSelection() { document.getElementById('empLoginBox').classList.add('hidden'); document.getElementById('staffLoginBox').classList.add('hidden'); document.getElementById('gateSelectionBox').classList.remove('hidden'); }
+
+        function openForgotPwdOptionsModal() { document.getElementById('forgotPwdOptionsModalOverlay').classList.add('active'); }
+        function closeForgotPwdOptionsModal() { document.getElementById('forgotPwdOptionsModalOverlay').classList.remove('active'); }
+        function recoverEmployeePwd() {
+            if (!adminWhatsapp || adminWhatsapp.trim() === '') { showToast('لم يتم ضبط رقم واتساب الإدارة!', 'error'); return; }
+            let msg = encodeURIComponent("مرحباً، أنا موظف في الخط ونسيت الرمز السري الخاص بي. يرجى تزويدي به.");
+            window.open('https://wa.me/' + adminWhatsapp.replace(/\D/g,'') + '?text=' + msg, '_blank');
+            closeForgotPwdOptionsModal();
+        }
+        function openAdminResetModal() { closeForgotPwdOptionsModal(); document.getElementById('resetPhoneInput').value = ''; document.getElementById('resetNewPINInput').value = ''; document.getElementById('adminResetModalOverlay').classList.add('active'); }
+        function closeAdminResetModal() { document.getElementById('adminResetModalOverlay').classList.remove('active'); }
+        async function confirmAdminReset() { 
+            let phone = document.getElementById('resetPhoneInput').value.trim(); let newPin = document.getElementById('resetNewPINInput').value.trim(); 
+            if (!phone || !newPin) { showToast('يرجى ملء الحقول', 'error'); return; } showLoader(); 
+            try { 
+                let res = await runServer('verifyPhoneAndResetAdminPIN', phone, newPin); 
+                if (res.success) { closeAdminResetModal(); showStaffLogin(); document.getElementById('staffPinInput').value = newPin; showToast('تم تغيير الرمز بنجاح ✅'); } 
+                else { showToast(res.error, 'error'); } 
+            } catch(e) { showToast('خطأ سيرفر', 'error'); } hideLoader(); 
+        }
+
+        async function initApp() {
+            showLoader();
+            try {
+                let config = await runServer('getInitialConfig');
+                document.title = config.siteTitle; safeSetText('gateSiteTitle', config.siteTitle); safeSetText('gateSiteIcon', config.siteIcon); safeSetText('mainSiteTitle', config.siteTitle); safeSetText('mainSiteIcon', config.siteIcon); safeSetText('loaderIcon', config.siteIcon); adminWhatsapp = config.whatsappNumber || '';
+                let list = document.getElementById('empNamesList');
+                if(config.employeeNames && list) { list.innerHTML = ''; config.employeeNames.sort().forEach(n => { list.innerHTML += '<option value="' + n + '">'; }); }
+                let savedPin = localStorage.getItem('saved_emp_pin'); let savedName = localStorage.getItem('saved_emp_name');
+                if (savedPin && savedName) { document.getElementById('empNameInput').value = savedName; document.getElementById('empPinInput').value = savedPin; }
+            } catch(e) { console.error(e); } hideLoader();
+        }
+        document.addEventListener('DOMContentLoaded', initApp);
+
+        async function executeEmpLogin() {
+            let name = document.getElementById('empNameInput').value.trim(); let pin = document.getElementById('empPinInput').value.trim();
+            if (!name || !pin) { showToast('يرجى اختيار الاسم وإدخال الرمز', 'error'); return; } showLoader();
+            try {
+                let res = await runServer('loginSystem', 'employee', name, pin);
+                if (res.success) {
+                    currentEmployeeName = res.employeeName; currentEmployeePin = pin;
+                    localStorage.setItem('saved_emp_name', name); localStorage.setItem('saved_emp_pin', pin); let data = res.data;
+                    localStorage.setItem('ohtl_employees', JSON.stringify(data.ohtl_employees || {})); localStorage.setItem('ohtl_attendance_data', JSON.stringify(data.ohtl_attendance_data || [])); localStorage.setItem('ohtl_sys_settings', JSON.stringify(data.ohtl_sys_settings || {})); localStorage.setItem('ohtl_notifications', JSON.stringify(data.ohtl_notifications || [])); localStorage.setItem('ohtl_drivers', JSON.stringify(data.ohtl_drivers || []));
+                    document.getElementById('gateOverlay').classList.add('hidden'); safeSetText('userNameSpan', currentEmployeeName); document.getElementById('attendanceSection').classList.remove('hidden'); toggleEmpView('polls'); showToast('أهلاً بك، ' + currentEmployeeName);
+                } else { showToast(res.error, 'error'); }
+            } catch(e) { showToast('خطأ سيرفر', 'error'); } hideLoader();
+        }
+
+        async function executeStaffLogin() {
+            let pin = document.getElementById('staffPinInput').value.trim(); if (!pin) { showToast('يرجى إدخال الرمز السري', 'error'); return; } showLoader();
+            try {
+                let res = await runServer('loginSystem', 'admin_driver', '', pin);
+                if (res.success) {
+                    sessionPass = pin; let data = res.data;
+                    localStorage.setItem('ohtl_employees', JSON.stringify(data.ohtl_employees || {})); localStorage.setItem('ohtl_attendance_data', JSON.stringify(data.ohtl_attendance_data || [])); localStorage.setItem('ohtl_sys_settings', JSON.stringify(data.ohtl_sys_settings || {})); localStorage.setItem('ohtl_notifications', JSON.stringify(data.ohtl_notifications || [])); localStorage.setItem('ohtl_drivers', JSON.stringify(data.ohtl_drivers || []));
+                    document.getElementById('gateOverlay').classList.add('hidden');
+                    if (res.role === "admin") { document.getElementById('adminSection').classList.remove('hidden'); loadSystemSettings(); loadAdminEmployees(); loadDriversUI(); loadAttendanceDataAdmin(); switchTab('tab-tomorrow', document.querySelectorAll('.tab-btn')[0]); showToast('أهلاً بك يا مدير النظام'); } 
+                    else if (res.role === "driver") { currentDriverName = res.driverName; safeSetText('driverNameDisplay', '(' + currentDriverName + ')'); showDriverSection(); showToast('أهلاً بك يا كابتن'); }
+                } else { showToast(res.error, 'error'); }
+            } catch(e) { showToast('خطأ سيرفر', 'error'); } hideLoader();
+        }
+
+        function logoutToGate() { sessionPass = ""; currentEmployeeName = ""; currentEmployeePin = ""; currentDriverName = ""; document.getElementById('adminSection').classList.add('hidden'); document.getElementById('driverSection').classList.add('hidden'); document.getElementById('attendanceSection').classList.add('hidden'); backToGateSelection(); document.getElementById('gateOverlay').classList.remove('hidden'); showToast('تم تسجيل الخروج'); }
+
+        function toggleEmpView(view) {
+            if(view === 'polls') { document.getElementById('btnShowPolls').className = 'btn-submit'; document.getElementById('btnShowHistory').className = 'btn-back'; document.getElementById('empHistoryView').classList.add('hidden'); document.getElementById('empPollsView').classList.remove('hidden'); loadEmployeePolls(); }
+            else { document.getElementById('btnShowHistory').className = 'btn-submit'; document.getElementById('btnShowPolls').className = 'btn-back'; document.getElementById('empPollsView').classList.add('hidden'); document.getElementById('empHistoryView').classList.remove('hidden'); loadEmployeeHistory(); }
+        }
+
+        function loadEmployeeHistory() {
+            let recs = JSON.parse(localStorage.getItem('ohtl_attendance_data')) || [];
+            let myRecs = recs.filter(r => r.name === currentEmployeeName && r.status !== 'pending').sort((a,b) => parseDate(b.date) - parseDate(a.date));
+            let container = document.getElementById('empHistoryListContainer'); container.innerHTML = '';
+            if(myRecs.length === 0) { container.innerHTML = '<div style="text-align:center; padding:20px; color:#64748b;">لم تسجل في أي رحلة بعد.</div>'; return; }
+            myRecs.forEach(r => {
+                let isLeave = r.shift === 'مجاز (عطلة)';
+                let isPaid = r.status === 'paid';
+                let stClass = isLeave ? 'leave' : (isPaid ? 'paid' : 'unpaid');
+                let stText = isLeave ? '<span style="color:var(--warning); font-weight:bold; font-size:12px;">🌴 مجاز</span>' : (isPaid ? '<span style="color:var(--success); font-weight:bold; font-size:12px;">✅ مسددة</span>' : '<span style="color:var(--danger); font-weight:bold; font-size:12px;">⏳ غير مسددة</span>');
+                container.innerHTML += '<div class="history-card ' + stClass + '"><div style="display:flex; flex-direction:column; gap:4px;"><span style="font-weight:bold; color:var(--primary-dark);">' + r.date + '</span><span style="font-size:13px; color:#475569;">' + r.shift + '</span></div>' + stText + '</div>';
+            });
+        }
+
+        function checkVotingAllowed(shiftName) { 
+            let s = JSON.parse(localStorage.getItem('ohtl_sys_settings')) || { status: 'open', shiftsConfig: {} }; 
+            if (s.status === 'closed') return false; 
+            
+            let baseShift = shiftName.split(' ')[0];
+            let cfg;
+            if (baseShift === 'مجاز' && s.shiftsConfig && s.shiftsConfig['صباحي']) {
+                cfg = { enabled: true, start: s.shiftsConfig['صباحي'].start, end: s.shiftsConfig['صباحي'].end };
+            } else {
+                cfg = s.shiftsConfig && s.shiftsConfig[baseShift] ? s.shiftsConfig[baseShift] : { enabled: true, start: "00:00", end: "23:59" };
+            }
+            if(!cfg.enabled && baseShift !== 'مجاز') return false;
+            if (s.status === 'timed') { 
+                let now = new Date(), cMin = now.getHours() * 60 + now.getMinutes(); 
+                let p1 = cfg.start.split(':'), sMin = parseInt(p1[0]) * 60 + parseInt(p1[1]); 
+                let p2 = cfg.end.split(':'), eMin = parseInt(p2[0]) * 60 + parseInt(p2[1]); 
+                if (sMin <= eMin) { if (cMin < sMin || cMin > eMin) return false; } 
+                else { if (cMin < sMin && cMin > eMin) return false; } 
+            } return true; 
+        }
+
+        function loadEmployeePolls() {
+            let recs = JSON.parse(localStorage.getItem('ohtl_attendance_data')) || [];
+            let unpaidCount = recs.filter(r => r.name === currentEmployeeName && r.status === 'completed' && r.shift !== 'مجاز (عطلة)').length;
+            document.getElementById('empTripCountDisplay').innerHTML = unpaidCount + ' رحلة';
+            
+            let container = document.getElementById('pollsContainer'); container.innerHTML = '';
+            let myPending = recs.filter(r => r.name === currentEmployeeName && (!r.status || r.status === 'pending'));
+            
+            let today = new Date(); let tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+            let daysToRender = [today, tomorrow];
+            
+            daysToRender.forEach((dObj, idx) => {
+                let dStr = formatDate(dObj); let title = idx === 0 ? "اليوم" : "غداً"; let dayName = getDayName(dObj);
+                let selectedShift = myPending.find(r => r.date === dStr)?.shift || null; let noteVal = myPending.find(r => r.date === dStr)?.note || '';
+                
+                let html = '<div class="poll-container"><div class="poll-header"><span>' + title + ' — ' + dayName + ' (' + dStr + ')</span></div><div class="poll-body">';
+                pollOptionsList.forEach(opt => {
+                    let isAllowed = checkVotingAllowed(opt);
+                    let isSel = (selectedShift === opt); let cls = 'poll-option'; 
+                    if (opt === 'مجاز (عطلة)') cls += ' leave-option';
+                    if (isSel) cls += ' selected'; if (!isAllowed) cls += ' locked';
+                    html += '<div class="' + cls + '" onclick="castVote(\'' + dStr + '\', \'' + opt + '\', ' + isAllowed + ')">' + opt + '</div>';
+                });
+                
+                let noteInputId = 'note_' + idx; let isNoteVisible = noteVal ? 'show' : '';
+                html += '<button class="add-note-btn" onclick="document.getElementById(\'' + noteInputId + '\').classList.toggle(\'show\')">📝 إضافة/تعديل ملاحظة للسائق</button>';
+                html += '<input type="text" id="' + noteInputId + '" class="poll-note-input ' + isNoteVisible + '" placeholder="اكتب ملاحظة قصيرة..." value="' + noteVal.replace(/"/g, '&quot;') + '" onblur="updateNote(\'' + dStr + '\', this.value)">';
+                html += '</div></div>'; container.innerHTML += html;
+            });
+        }
+
+        async function castVote(dateStr, shiftStr, isAllowed) {
+            if (!isAllowed) { showToast('التصويت لهذا الشفت مغلق أو انتهى وقته!', 'error'); return; }
+            let noteInputId = dateStr === formatDate(new Date()) ? 'note_0' : 'note_1';
+            let note = document.getElementById(noteInputId) ? document.getElementById(noteInputId).value.trim() : '';
+            showLoader();
+            try {
+                let result = await runServer('registerShift', currentEmployeeName, currentEmployeePin, shiftStr, dateStr, new Date().toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' }), note);
+                if (result.success) {
+                    let resAll = await runServer('loginSystem', 'employee', currentEmployeeName, currentEmployeePin);
+                    if(resAll.success) localStorage.setItem('ohtl_attendance_data', JSON.stringify(resAll.data.ohtl_attendance_data || []));
+                    loadEmployeePolls(); showToast('تم الحفظ ✅');
+                } else { showToast(result.error, 'error'); }
+            } catch(e) { showToast('خطأ بالاتصال', 'error'); } hideLoader();
+        }
+
+        async function updateNote(dateStr, noteVal) {
+            let recs = JSON.parse(localStorage.getItem('ohtl_attendance_data')) || [];
+            let myRec = recs.find(r => r.name === currentEmployeeName && r.date === dateStr && (!r.status || r.status === 'pending'));
+            if (!myRec) return; 
+            if (myRec.note === noteVal.trim()) return; 
+            castVote(dateStr, myRec.shift, checkVotingAllowed(myRec.shift)); 
+        }
+
+        let currentContactPhone = '';
+        function openContactModal(name, phone) {
+            if(phone === '-') { showToast('لا يوجد رقم للموظف', 'error'); return; }
+            currentContactPhone = phone.replace(/\D/g,'');
+            document.getElementById('contactModalName').innerText = '(' + name + ')';
+            document.getElementById('contactModalOverlay').classList.add('active');
+        }
+        document.getElementById('callPhoneBtn').addEventListener('click', function() { window.open('tel:' + currentContactPhone, '_self'); document.getElementById('contactModalOverlay').classList.remove('active'); });
+        document.getElementById('callWaBtn').addEventListener('click', function() { window.open('https://wa.me/964' + (currentContactPhone.startsWith('0')?currentContactPhone.substring(1):currentContactPhone), '_blank'); document.getElementById('contactModalOverlay').classList.remove('active'); });
+
+        function openEmployeeProfile(name) {
+            let emps = JSON.parse(localStorage.getItem('ohtl_employees')) || {};
+            let recs = JSON.parse(localStorage.getItem('ohtl_attendance_data')) || [];
+            let e = emps[name]; if(!e) return;
+            
+            document.getElementById('epName').innerText = name;
+            document.getElementById('epPhoneTitle').innerText = (e.phone||'-') + ' | ' + (e.address||'بدون عنوان');
+            document.getElementById('epFare').innerText = (parseInt(e.fare)||0).toLocaleString();
+            document.getElementById('epCycleDay').innerText = e.cycleDay || 1;
+            
+            let allMyRecs = recs.filter(r => r.name === name && (r.status !== 'pending' || r.shift === 'مجاز (عطلة)'));
+            let unpaid = allMyRecs.filter(r => r.status === 'completed' && r.shift !== 'مجاز (عطلة)');
+            
+            document.getElementById('epTotalTrips').innerText = allMyRecs.length;
+            document.getElementById('epUnpaidTrips').innerText = unpaid.length;
+            document.getElementById('epDueAmount').innerText = (unpaid.length * (parseInt(e.fare)||0)).toLocaleString() + ' د.ع';
+            
+            let hList = document.getElementById('epHistoryList'); hList.innerHTML = '';
+            if(allMyRecs.length === 0) { hList.innerHTML = '<div style="text-align:center; color:#64748b; padding:10px;">لا يوجد سجل رحلات.</div>'; }
+            else {
+                allMyRecs.sort((a,b)=>parseDate(b.date)-parseDate(a.date)).forEach(r => {
+                    let st = r.shift === 'مجاز (عطلة)' ? '<span style="color:var(--warning); font-size:11px; font-weight:bold;">مجاز 🌴</span>' : (r.status === 'paid' ? '<span style="color:var(--success); font-size:11px; font-weight:bold;">مسددة</span>' : '<span style="color:var(--danger); font-size:11px; font-weight:bold;">غير مسددة</span>');
+                    hList.innerHTML += '<div style="background:#f1f5f9; padding:10px; margin-bottom:5px; border-radius:8px; display:flex; justify-content:space-between; align-items:center;"><div><strong style="color:var(--primary-dark); font-size:13px;">' + r.date + '</strong><br><span style="font-size:12px; color:#475569;">' + r.shift + '</span></div>' + st + '</div>';
+                });
+            }
+            document.getElementById('employeeProfileModalOverlay').classList.add('active');
+        }
+
+        async function refreshAdminData() { showLoader(); try { let res = await runServer('loginSystem', 'admin_driver', '', sessionPass); if (res.success) { let data = res.data; localStorage.setItem('ohtl_employees', JSON.stringify(data.ohtl_employees || {})); localStorage.setItem('ohtl_attendance_data', JSON.stringify(data.ohtl_attendance_data || [])); localStorage.setItem('ohtl_notifications', JSON.stringify(data.ohtl_notifications || [])); localStorage.setItem('ohtl_drivers', JSON.stringify(data.ohtl_drivers || [])); if(!document.getElementById('adminSection').classList.contains('hidden')) { loadAdminEmployees(); loadAttendanceDataAdmin(); } else { loadDriverTableUI(); } showToast('تم التحديث بنجاح'); } } catch(e) {showToast('تعذر التحديث','error');} hideLoader(); }
+
+        function toggleDriverAcc(id) { let el = document.getElementById(id); if (el.classList.contains('open')) { el.classList.remove('open'); } else { el.classList.add('open'); } }
+        function toggleShiftCard(id) { let el = document.getElementById(id); if (el.classList.contains('open')) { el.classList.remove('open'); el.parentElement.classList.remove('active'); } else { el.classList.add('open'); el.parentElement.classList.add('active'); } }
+
+        function showDriverSection() { 
+            document.getElementById('attendanceSection').classList.add('hidden'); document.getElementById('adminSection').classList.add('hidden'); document.getElementById('driverSection').classList.remove('hidden'); 
+            loadDriverTableUI(); 
+        }
+
+        function loadDriverTableUI() { 
+            let recs = JSON.parse(localStorage.getItem('ohtl_attendance_data')) || [];
+            let emps = JSON.parse(localStorage.getItem('ohtl_employees')) || {};
+            let notifs = JSON.parse(localStorage.getItem('ohtl_notifications')) || [];
+            
+            let container = document.getElementById('driverSmartShiftsContainer'); if(!container) return; container.innerHTML = '';
+            
+            let alertBox = document.getElementById('driverAlertBox');
+            if (notifs.length > 0) { document.getElementById('driverAlertText').innerText = "الراكب (" + notifs[notifs.length-1].name + ") " + notifs[notifs.length-1].msg; alertBox.style.display = 'block'; } 
+            else { alertBox.style.display = 'none'; }
+            
+            let today = new Date(); let tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+            let daysToRender = [today, tomorrow];
+            
+            daysToRender.forEach((dObj, dIdx) => {
+                let dStr = formatDate(dObj); let dayLabel = dIdx === 0 ? "اليوم" : "غداً"; let dayName = getDayName(dObj);
+                let dayHtml = '<div class="driver-day-title">📅 ' + dayLabel + ' (' + dStr + ' - ' + dayName + ')</div>';
+                
+                pollOptionsList.forEach((shift, sIdx) => {
+                    if(shift === 'مجاز (عطلة)') return; 
+                    let f = recs.filter(r => r.date === dStr && r.shift === shift && (!r.status || r.status === 'pending')); 
+                    if (f.length === 0) { dayHtml += '<div class="d-shift-card empty"><div class="d-shift-header"><span>' + shift + '</span><span style="font-size:12px; color:#94a3b8;">0 ركاب</span></div></div>'; } 
+                    else {
+                        let shiftId = 'shift_' + dIdx + '_' + sIdx; let paxHtml = '';
+                        f.sort((a,b) => (parseInt(emps[a.name]?.order)||999) - (parseInt(emps[b.name]?.order)||999)).forEach((r, pIdx) => { 
+                            let ph = emps[r.name]?.phone || '-'; let ord = emps[r.name]?.order === 999 ? '-' : emps[r.name]?.order; let addr = emps[r.name]?.address || '-'; 
+                            let paxId = 'pax_' + dIdx + '_' + sIdx + '_' + pIdx;
+                            let safeNote = (r.note || '').replace(/'/g, "\\'"); let safeName = (r.name || '').replace(/'/g, "\\'");
+                            let noteHtml = r.note ? '<div class="acc-note">📝 <strong>ملاحظة الراكب:</strong> ' + r.note + '</div>' : '';
+                            let callBtn = ph !== '-' ? '<button style="background:var(--success); color:white; padding:8px 15px; border-radius:8px; border:none; font-weight:bold; margin-top:10px; width:100%;" onclick="openContactModal(\'' + safeName + '\', \'' + ph + '\')">📞 اتصال / 💬 واتساب</button>' : '';
+                            paxHtml += '<div class="d-pax-item"><div class="d-pax-header" onclick="event.stopPropagation(); toggleDriverAcc(\'' + paxId + '\')"><span>' + ord + '. ' + r.name + '</span><span>▼</span></div><div class="d-pax-details" id="' + paxId + '"><div class="acc-detail-row"><span>📍 العنوان:</span><strong>' + addr + '</strong></div>' + noteHtml + callBtn + '</div></div>';
+                        }); 
+                        dayHtml += '<div class="d-shift-card active"><div class="d-shift-header" onclick="toggleShiftCard(\'' + shiftId + '\')"><span style="font-size:16px;">' + shift + '</span><span class="badge" style="background:#0ea5e9; font-size:13px; padding:4px 8px;">' + f.length + ' ركاب ▼</span></div><div class="d-shift-content" id="' + shiftId + '">' + paxHtml + '<button class="btn-warning" style="margin-top:15px; width:100%;" onclick="driverMarkTripCompleted(\'' + dStr + '\', \'' + shift + '\')">🏁 إنهاء هذه الرحلة</button></div></div>';
+                    }
+                });
+                container.innerHTML += dayHtml;
+            });
+        }
+
+        async function driverMarkTripCompleted(d, s) {
+            if(await showCustomConfirm('إنهاء الرحلة', 'هل أنت متأكد من إنهاء رحلة (' + s + ') لتاريخ (' + d + ')؟\nسيتم تحويلها إلى الأرشيف ولن يستطيع الموظف تعديلها.', 'تأكيد الإنهاء 🏁', 'تراجع')) {
+                showLoader(); try { let res = await runServer('completeTrip', sessionPass, d, s, currentDriverName); if(res.success) { localStorage.setItem('ohtl_attendance_data', JSON.stringify(res.data.ohtl_attendance_data || [])); loadDriverTableUI(); hideLoader(); showToast('تم إنهاء الرحلة بنجاح 🏁'); } else { hideLoader(); showToast(res.error, 'error'); } } catch(e) { hideLoader(); showToast('خطأ سيرفر', 'error'); }
+            }
+        }
+
+        function populateDateDropdown(selectId, datesArray, fallbackDate) { let dS = document.getElementById(selectId); if(!dS) return; let currentVal = dS.value; dS.innerHTML = '<option value="">-- التاريخ --</option>'; datesArray.forEach(d => { dS.innerHTML += '<option value="' + d + '">' + d + '</option>'; }); if (currentVal && datesArray.includes(currentVal)) { dS.value = currentVal; } else if (datesArray.includes(fallbackDate)) { dS.value = fallbackDate; } else if (datesArray.length > 0) { dS.value = datesArray[datesArray.length - 1]; } }
+
+        function loadAttendanceDataAdmin() {
+            let recs = JSON.parse(localStorage.getItem('ohtl_attendance_data')) || [];
+            let today = new Date(); let tF = String(today.getDate()).padStart(2, '0') + '/' + String(today.getMonth() + 1).padStart(2, '0') + '/' + today.getFullYear();
+            
+            let offRecs = recs.filter(r => r.date === tF && r.shift === 'مجاز (عطلة)' && (!r.status || r.status === 'pending'));
+            let offContainer = document.getElementById('adminOffDutyList');
+            if(offContainer) {
+                if(offRecs.length === 0) offContainer.innerHTML = 'لا يوجد موظفين مجازين لهذا اليوم.';
+                else offContainer.innerHTML = offRecs.map(r => '• <strong>' + r.name + '</strong>' + (r.note ? ' <span style="font-size:11px; opacity:0.8;">(ملاحظة: ' + r.note.replace(/'/g, "\\'") + ')</span>' : '')).join('<br>');
+            }
+            
+            const pastContainer = document.getElementById('pastTripsContainer'); pastContainer.innerHTML = '';
+            let pastRecs = recs.filter(r => r.status === 'completed' || r.status === 'paid');
+            let dfS = document.getElementById('pastTripsDriverFilter'); let uDrivers = [...new Set(pastRecs.map(r => r.driver || 'الإدارة'))];
+            let currentFilter = dfS.value; dfS.innerHTML = '<option value="الكل">الكل (جميع السائقين)</option>'; uDrivers.forEach(dr => dfS.innerHTML += '<option value="' + dr + '">' + dr + '</option>'); if (uDrivers.includes(currentFilter)) dfS.value = currentFilter;
+            if (dfS.value !== 'الكل') pastRecs = pastRecs.filter(r => (r.driver || 'الإدارة') === dfS.value);
+
+            let groupedPast = {};
+            pastRecs.forEach(r => { let key = r.date + '|' + r.shift + '|' + (r.driver||'الإدارة'); if (!groupedPast[key]) groupedPast[key] = { date: r.date, shift: r.shift, driver: (r.driver||'الإدارة'), names: [] }; groupedPast[key].names.push(r.name); });
+            let groupedKeys = Object.keys(groupedPast).reverse();
+            if (groupedKeys.length === 0) { pastContainer.innerHTML = '<div style="text-align:center; padding:15px; color:#64748b; font-size:14px; font-weight:bold;">لا توجد رحلات مطابقة.</div>'; } 
+            else { groupedKeys.forEach((key, index) => { let group = groupedPast[key]; let contentId = 'pastTripContent_' + index; let namesHtml = group.names.map(n => '<div class="past-trip-name">👤 ' + n + '</div>').join(''); pastContainer.innerHTML += '<div class="past-trip-card"><div class="past-trip-header" onclick="togglePastTrip(\'' + contentId + '\')"><div style="display:flex; flex-direction:column; gap:4px;"><span>📅 ' + group.date + ' | ⏱️ ' + group.shift + '</span><span style="font-size:11px; color:#64748b;">👨‍✈️ السائق: ' + group.driver + '</span></div><span class="badge" style="background:#0ea5e9; font-size:12px; padding:4px 8px;">' + group.names.length + ' ركاب ▼</span></div><div class="past-trip-content" id="' + contentId + '">' + namesHtml + '</div></div>'; }); }
+            
+            checkBillingNotifications(); generateMonthlyReport();
+        }
+
+        function checkBillingNotifications() {
+            let emps = JSON.parse(localStorage.getItem('ohtl_employees')) || {}; let recs = JSON.parse(localStorage.getItem('ohtl_attendance_data')) || [];
+            let nList = document.getElementById('notificationsList'); let alertsHtml = '';
+            for(let name in emps) { let unpaidCount = recs.filter(r => r.name === name && r.status === 'completed' && r.shift !== 'مجاز (عطلة)').length; if (unpaidCount >= 26) { alertsHtml += '<div class="notification-item" style="border-right-color:var(--danger); background:#fef2f2;"><strong>💰 تنبيه أجور:</strong> الموظف (' + name + ') تجاوز ' + unpaidCount + ' رحلة غير مسددة.</div>'; } }
+            let n = JSON.parse(localStorage.getItem('ohtl_notifications')) || [];
+            if(n.length > 0) { [...n].reverse().forEach(x => { alertsHtml += '<div class="notification-item"><strong>👤 ' + x.name + '</strong>: ' + x.msg + '<span class="notification-time">🕒 ' + x.time + '</span></div>'; }); }
+            if(nList) nList.innerHTML = alertsHtml || '<div style="text-align:center; color:#94a3b8; font-size:13px; padding:10px;">لا توجد إشعارات.</div>';
+        }
+
+        function loadAdminEmployees() {
+            const emps = JSON.parse(localStorage.getItem('ohtl_employees')) || {}, tbody = document.querySelector('#employeesTable tbody'); tbody.innerHTML = '';
+            let arr = []; for (let n in emps) { arr.push({ name: n, ...emps[n], order: parseInt(emps[n].order) || 999 }); } arr.sort((a, b) => a.order - b.order);
+            for (let e of arr) { 
+                let safeName = e.name.replace(/'/g, "\\'");
+                tbody.innerHTML += '<tr><td data-label="#"><strong>' + (e.order === 999 ? '-' : e.order) + '</strong></td><td data-label="الاسم (الملف)"><button class="btn-action" style="background:transparent; border:none; padding:0; color:var(--primary); font-weight:bold; font-size:15px; text-decoration:underline;" onclick="openEmployeeProfile(\'' + safeName + '\')">' + e.name + '</button></td><td data-label="الرمز" style="letter-spacing:2px; font-weight:bold;">' + e.pin + '</td><td data-label="الأجرة" style="color:var(--success); font-weight:800;">' + e.fare + '</td><td data-label="دورة">يوم ' + (e.cycleDay||1) + '</td><td data-label="هاتف" dir="ltr">' + (e.phone || '-') + '</td><td data-label="عنوان">' + (e.address || '-') + '</td><td data-label="تعديل"><div class="action-buttons"><button class="btn-action" style="background:#0ea5e9; color:white" onclick="editField(\'' + safeName + '\', \'order\', \'التسلسل\')">تسلسل</button><button class="btn-action" style="background:var(--primary); color:white" onclick="editField(\'' + safeName + '\', \'cycleDay\', \'يوم بداية الدورة\')">دورة</button><button class="btn-action" style="background:var(--success); color:white" onclick="editField(\'' + safeName + '\', \'fare\', \'الأجرة\')">أجرة</button><button class="btn-action" style="background:#64748b; color:white" onclick="editField(\'' + safeName + '\', \'phone\', \'هاتف\')">هاتف</button><button class="btn-action" style="background:#475569; color:white" onclick="editField(\'' + safeName + '\', \'address\', \'عنوان\')">عنوان</button><button class="btn-action btn-clear" style="margin-top:0" onclick="deleteEmployee(\'' + safeName + '\')">حذف</button></div></td></tr>'; 
+            }
+        }
+        async function editField(name, key, label) { const emps = JSON.parse(localStorage.getItem('ohtl_employees')) || {}; let type = (key === 'order' || key === 'fare' || key === 'cycleDay') ? 'number' : 'text'; let newVal = await showCustomPrompt('تعديل البيانات', `أدخل ${label} لـ (${name}):`, emps[name][key]||'', type); if (newVal !== null && String(newVal).trim() !== '') { showLoader(); let finalVal = String(newVal).trim(); if(key==='cycleDay') finalVal = Math.min(Math.max(parseInt(finalVal)||1, 1), 31); else if (key==='order'||key==='fare') finalVal = parseInt(finalVal)||0; emps[name][key] = finalVal; localStorage.setItem('ohtl_employees', JSON.stringify(emps)); await runServer('adminSync', sessionPass, {ohtl_employees: emps, ohtl_attendance_data: JSON.parse(localStorage.getItem('ohtl_attendance_data') || '[]'), ohtl_sys_settings: JSON.parse(localStorage.getItem('ohtl_sys_settings') || '{}'), ohtl_notifications: JSON.parse(localStorage.getItem('ohtl_notifications') || '[]'), ohtl_drivers: JSON.parse(localStorage.getItem('ohtl_drivers') || '[]')}); loadAdminEmployees(); hideLoader(); showToast('تم التعديل'); } }
+        async function addEmployee() { let n = document.getElementById('newName').value.trim(); if (!n) return showToast("يرجى إدخال الاسم!", 'error'); showLoader(); let cDay = parseInt(document.getElementById('newCycleDay').value) || 1; cDay = Math.min(Math.max(cDay, 1), 31); let empData = { name: n, order: document.getElementById('newOrder').value, phone: document.getElementById('newPhone').value, address: document.getElementById('newAddress').value, fare: document.getElementById('newFare').value, cycleDay: cDay }; try { let res = await runServer('addEmployeeAutoPin', sessionPass, empData); if(res.success) { localStorage.setItem('ohtl_employees', JSON.stringify(res.data.ohtl_employees)); ['newName', 'newPhone', 'newAddress', 'newFare', 'newOrder', 'newCycleDay'].forEach(id => document.getElementById(id).value = ''); loadAdminEmployees(); hideLoader(); document.getElementById('generatedPinDisplay').innerText = res.newPin; document.getElementById('adminGeneratedPinModal').classList.add('active'); } else { hideLoader(); showToast(res.error, 'error'); } } catch(e) { hideLoader(); showToast('خطأ سيرفر', 'error'); } }
+        async function deleteEmployee(name) { if(await showCustomConfirm('تأكيد الحذف', 'حذف الموظف (' + name + ') نهائياً؟', 'حذف', 'تراجع', '⚠️')) { showLoader(); const emps = JSON.parse(localStorage.getItem('ohtl_employees')) || {}; delete emps[name]; localStorage.setItem('ohtl_employees', JSON.stringify(emps)); await runServer('adminSync', sessionPass, {ohtl_employees: emps, ohtl_attendance_data: JSON.parse(localStorage.getItem('ohtl_attendance_data') || '[]'), ohtl_sys_settings: JSON.parse(localStorage.getItem('ohtl_sys_settings') || '{}'), ohtl_notifications: JSON.parse(localStorage.getItem('ohtl_notifications') || '[]'), ohtl_drivers: JSON.parse(localStorage.getItem('ohtl_drivers') || '[]')}); loadAdminEmployees(); hideLoader(); showToast('تم الحذف');} }
+
+        function loadDriversUI() { let drivers = JSON.parse(localStorage.getItem('ohtl_drivers')) || []; const tb = document.querySelector('#driversTable tbody'); tb.innerHTML = ''; drivers.forEach((d, i) => { tb.innerHTML += '<tr><td data-label="اسم السائق">' + d.name + '</td><td data-label="الرمز">' + d.pin + '</td><td data-label="الحالة"><span class="status-badge ' + (d.status==='active'?'status-completed':'status-pending') + '">' + (d.status==='active'?'نشط':'معطل') + '</span></td><td data-label="إجراء"><div class="action-buttons"><button class="btn-action" style="background:#f59e0b; color:white" onclick="toggleDriverStatus(' + i + ')">' + (d.status==='active'?'تعطيل':'تفعيل') + '</button><button class="btn-action btn-clear" onclick="deleteDriver(' + i + ')">حذف</button></div></td></tr>'; }); }
+        async function addDriver() { let n = document.getElementById('newDriverName').value.trim(), p = document.getElementById('newDriverPin').value.trim(); if(!n || !p) return showToast('اكتب اسم ورمز السائق','error'); showLoader(); let drivers = JSON.parse(localStorage.getItem('ohtl_drivers')) || []; drivers.push({name:n, pin:p, status:'active'}); localStorage.setItem('ohtl_drivers', JSON.stringify(drivers)); await runServer('adminSync', sessionPass, {ohtl_employees: JSON.parse(localStorage.getItem('ohtl_employees') || '{}'), ohtl_attendance_data: JSON.parse(localStorage.getItem('ohtl_attendance_data') || '[]'), ohtl_sys_settings: JSON.parse(localStorage.getItem('ohtl_sys_settings') || '{}'), ohtl_notifications: JSON.parse(localStorage.getItem('ohtl_notifications') || '[]'), ohtl_drivers: drivers}); loadDriversUI(); document.getElementById('newDriverName').value=''; document.getElementById('newDriverPin').value=''; hideLoader(); showToast('تم الإضافة');}
+        async function toggleDriverStatus(i) { showLoader(); let drivers = JSON.parse(localStorage.getItem('ohtl_drivers')) || []; drivers[i].status = drivers[i].status==='active'?'disabled':'active'; localStorage.setItem('ohtl_drivers', JSON.stringify(drivers)); await runServer('adminSync', sessionPass, {ohtl_employees: JSON.parse(localStorage.getItem('ohtl_employees') || '{}'), ohtl_attendance_data: JSON.parse(localStorage.getItem('ohtl_attendance_data') || '[]'), ohtl_sys_settings: JSON.parse(localStorage.getItem('ohtl_sys_settings') || '{}'), ohtl_notifications: JSON.parse(localStorage.getItem('ohtl_notifications') || '[]'), ohtl_drivers: drivers}); loadDriversUI(); hideLoader(); showToast('تم التغيير'); }
+        async function deleteDriver(i) { if(await showCustomConfirm('حذف سائق', 'حذف هذا السائق؟', 'نعم', 'تراجع', '⚠️')) { showLoader(); let drivers = JSON.parse(localStorage.getItem('ohtl_drivers')) || []; drivers.splice(i,1); localStorage.setItem('ohtl_drivers', JSON.stringify(drivers)); await runServer('adminSync', sessionPass, {ohtl_employees: JSON.parse(localStorage.getItem('ohtl_employees') || '{}'), ohtl_attendance_data: JSON.parse(localStorage.getItem('ohtl_attendance_data') || '[]'), ohtl_sys_settings: JSON.parse(localStorage.getItem('ohtl_sys_settings') || '{}'), ohtl_notifications: JSON.parse(localStorage.getItem('ohtl_notifications') || '[]'), ohtl_drivers: drivers}); loadDriversUI(); hideLoader(); showToast('تم الحذف');} }
+
+        function loadSystemSettings() { 
+            let s = JSON.parse(localStorage.getItem('ohtl_sys_settings')) || {}; 
+            document.getElementById('sysStatus').value = s.status || 'open'; 
+            document.getElementById('adminPassInput').value = s.adminPass || '999'; 
+            document.getElementById('siteTitleInput').value = s.siteTitle || 'حجز رحلة الموظفين'; 
+            document.getElementById('siteIconInput').value = s.siteIcon || '🚐'; 
+            document.getElementById('adminRecoveryPhoneInput').value = s.adminRecoveryPhone || ''; 
+            document.getElementById('whatsappNumberInput').value = s.whatsappNumber || ''; 
+            
+            let cfg = s.shiftsConfig || {};
+            document.getElementById('sh_m_en').checked = cfg['صباحي'] ? cfg['صباحي'].enabled : true;
+            document.getElementById('sh_m_start').value = cfg['صباحي'] ? cfg['صباحي'].start : "00:00";
+            document.getElementById('sh_m_end').value = cfg['صباحي'] ? cfg['صباحي'].end : "23:59";
+            
+            document.getElementById('sh_e_en').checked = cfg['مسائي'] ? cfg['مسائي'].enabled : true;
+            document.getElementById('sh_e_start').value = cfg['مسائي'] ? cfg['مسائي'].start : "00:00";
+            document.getElementById('sh_e_end').value = cfg['مسائي'] ? cfg['مسائي'].end : "23:59";
+            
+            document.getElementById('sh_n_en').checked = cfg['ليلي'] ? cfg['ليلي'].enabled : true;
+            document.getElementById('sh_n_start').value = cfg['ليلي'] ? cfg['ليلي'].start : "00:00";
+            document.getElementById('sh_n_end').value = cfg['ليلي'] ? cfg['ليلي'].end : "23:59";
+            
+            toggleTimeSettings(); 
+        }
+        function toggleTimeSettings() { document.getElementById('timeSettings').style.display = (document.getElementById('sysStatus').value === 'timed') ? 'block' : 'none'; }
+        
+        async function saveSystemSettings() { 
+            showLoader(); let s = JSON.parse(localStorage.getItem('ohtl_sys_settings')) || {}; 
+            s.status = document.getElementById('sysStatus').value; 
+            s.adminPass = document.getElementById('adminPassInput').value || '999'; 
+            s.siteTitle = document.getElementById('siteTitleInput').value.trim() || 'حجز رحلة الموظفين'; 
+            s.siteIcon = document.getElementById('siteIconInput').value.trim() || '🚐'; 
+            s.adminRecoveryPhone = document.getElementById('adminRecoveryPhoneInput').value.trim().replace(/\D/g, ''); 
+            s.whatsappNumber = document.getElementById('whatsappNumberInput').value.trim().replace(/\D/g, ''); 
+            
+            s.shiftsConfig = {
+                "صباحي": { enabled: document.getElementById('sh_m_en').checked, start: document.getElementById('sh_m_start').value, end: document.getElementById('sh_m_end').value },
+                "مسائي": { enabled: document.getElementById('sh_e_en').checked, start: document.getElementById('sh_e_start').value, end: document.getElementById('sh_e_end').value },
+                "ليلي": { enabled: document.getElementById('sh_n_en').checked, start: document.getElementById('sh_n_start').value, end: document.getElementById('sh_n_end').value }
+            };
+            
+            localStorage.setItem('ohtl_sys_settings', JSON.stringify(s)); safeSetText('gateSiteTitle', s.siteTitle); safeSetText('gateSiteIcon', s.siteIcon); safeSetText('mainSiteTitle', s.siteTitle); safeSetText('mainSiteIcon', s.siteIcon); safeSetText('loaderIcon', s.siteIcon); adminWhatsapp = s.whatsappNumber; 
+            await runServer('adminSync', sessionPass, {ohtl_employees: JSON.parse(localStorage.getItem('ohtl_employees') || '{}'), ohtl_attendance_data: JSON.parse(localStorage.getItem('ohtl_attendance_data') || '[]'), ohtl_sys_settings: s, ohtl_notifications: JSON.parse(localStorage.getItem('ohtl_notifications') || '[]'), ohtl_drivers: JSON.parse(localStorage.getItem('ohtl_drivers') || '[]')}); hideLoader(); showToast('تم الحفظ'); 
+        }
+        async function clearNotifications() { if(await showCustomConfirm('تأكيد المسح', 'مسح الإشعارات؟', 'نعم', 'تراجع', '🗑️')) { showLoader(); localStorage.setItem('ohtl_notifications', '[]'); await runServer('adminSync', sessionPass, {ohtl_employees: JSON.parse(localStorage.getItem('ohtl_employees') || '{}'), ohtl_attendance_data: JSON.parse(localStorage.getItem('ohtl_attendance_data') || '[]'), ohtl_sys_settings: JSON.parse(localStorage.getItem('ohtl_sys_settings') || '{}'), ohtl_notifications: [], ohtl_drivers: JSON.parse(localStorage.getItem('ohtl_drivers') || '[]')}); loadAttendanceDataAdmin(); hideLoader(); showToast('تم المسح');} }
+        async function clearData() { if (await showCustomConfirm('تصفير السجلات', '⚠️️ مسح جميع سجلات الحضور لبدء شهر جديد؟', 'نعم', 'تراجع', '🚨')) { showLoader(); localStorage.setItem('ohtl_attendance_data', '[]'); await runServer('adminSync', sessionPass, {ohtl_employees: JSON.parse(localStorage.getItem('ohtl_employees') || '{}'), ohtl_attendance_data: [], ohtl_sys_settings: JSON.parse(localStorage.getItem('ohtl_sys_settings') || '{}'), ohtl_notifications: JSON.parse(localStorage.getItem('ohtl_notifications') || '[]'), ohtl_drivers: JSON.parse(localStorage.getItem('ohtl_drivers') || '[]')}); loadAttendanceDataAdmin(); hideLoader(); showToast('تم التصفير');} }
+
+        function generateMonthlyReport() { 
+            let recs = JSON.parse(localStorage.getItem('ohtl_attendance_data')) || [], emps = JSON.parse(localStorage.getItem('ohtl_employees')) || {};
+            let tb = document.querySelector('#monthlyReportTable tbody'); tb.innerHTML = ''; 
+            for (let n in emps) { 
+                let myRecs = recs.filter(r => r.name === n && r.status === 'completed' && r.shift !== 'مجاز (عطلة)');
+                let tCount = myRecs.length; let fare = parseInt(emps[n].fare) || 0; let money = tCount * fare;
+                let cycleText = '-';
+                if(tCount > 0) { let parsedDates = myRecs.map(r => parseDate(r.date)).sort((a,b)=>a-b); cycleText = formatDate(parsedDates[0]) + ' إلى ' + formatDate(parsedDates[parsedDates.length-1]); }
+                let safeName = n.replace(/'/g, "\\'");
+                tb.innerHTML += '<tr><td data-label="الاسم"><strong>' + n + '</strong></td><td data-label="الفترة" style="font-size:11px;">' + cycleText + '</td><td data-label="الرحلات"><strong>' + tCount + '</strong></td><td data-label="المطلوب" class="th-money" style="color:var(--danger);">' + money.toLocaleString() + ' د.ع</td><td data-label="تسديد"><button class="btn-action" style="background:#10b981; color:white; margin:0; width:100%; padding:8px;" onclick="payEmployee(\'' + safeName + '\', ' + money + ')">تصفير 💵</button></td></tr>'; 
+            } 
+        }
+        
+        async function payEmployee(name, amount) {
+            if (amount === 0) { showToast('الحساب مصفر أصلاً', 'success'); return; }
+            if(await showCustomConfirm('تصفير الحساب', 'تصفير حساب (' + name + ') بمبلغ ' + amount.toLocaleString() + ' د.ع؟\nهذا الإجراء سيحول رحلاته المتراكمة إلى "مسددة".', 'تأكيد التسديد', 'إلغاء', '💵')) {
+                showLoader(); try { let res = await runServer('payEmployeeBalance', sessionPass, name); if(res.success) { localStorage.setItem('ohtl_attendance_data', JSON.stringify(res.data.ohtl_attendance_data || [])); loadAttendanceDataAdmin(); hideLoader(); showToast('تم تصفير حساب ' + name); } else { hideLoader(); showToast(res.error, 'error'); } } catch(e) { hideLoader(); showToast('خطأ بالاتصال', 'error'); }
+            }
+        }
+
+        function getExcelDataArray() {
+            let t = document.getElementById('monthlyReportTable'); if(t.rows.length <= 1) { showToast('الجدول فارغ، لا توجد بيانات لتحميلها', 'error'); return null; }
+            let data = [['اسم الموظف', 'رقم التسلسل', 'الفترة غير المسددة', 'إجمالي الرحلات', 'المبلغ المطلوب (دينار)']];
+            let emps = JSON.parse(localStorage.getItem('ohtl_employees')) || {}, recs = JSON.parse(localStorage.getItem('ohtl_attendance_data')) || [];
+            for(let n in emps) { 
+                let myRecs = recs.filter(r => r.name === n && r.status === 'completed' && r.shift !== 'مجاز (عطلة)');
+                let tCount = myRecs.length; let cycleText = '-';
+                if(tCount > 0) { let parsedDates = myRecs.map(r => parseDate(r.date)).sort((a,b)=>a-b); cycleText = formatDate(parsedDates[0]) + ' إلى ' + formatDate(parsedDates[parsedDates.length-1]); }
+                data.push([n, (emps[n].order||'-'), cycleText, tCount, (tCount * (parseInt(emps[n].fare)||0))]); 
+            }
+            return data;
+        }
+
+        function downloadExcelReport() { let data = getExcelDataArray(); if(!data) return; const ws = XLSX.utils.aoa_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "التقرير المالي"); XLSX.writeFile(wb, "تقرير_الخط.xlsx"); showToast('تم التحميل'); }
+    </script>
+</body>
+</html>
